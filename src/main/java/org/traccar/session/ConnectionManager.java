@@ -248,6 +248,40 @@ public class ConnectionManager implements BroadcastInterface {
                 default -> Event.TYPE_DEVICE_OFFLINE;
             };
             events.put(new Event(eventType, deviceId), null);
+
+            if (Device.STATUS_OFFLINE.equals(status)) {
+                Position lastPosition = cacheManager.getPosition(deviceId);
+                if (lastPosition != null && lastPosition.hasAttribute(Position.KEY_IGNITION)
+                        && lastPosition.getBoolean(Position.KEY_IGNITION)) {
+                    Position syntheticPosition = new Position();
+                    syntheticPosition.setDeviceId(deviceId);
+                    syntheticPosition.setProtocol(lastPosition.getProtocol());
+                    syntheticPosition.setServerTime(new Date());
+                    syntheticPosition.setDeviceTime(new Date());
+                    syntheticPosition.setFixTime(new Date());
+                    syntheticPosition.setValid(lastPosition.getValid());
+                    syntheticPosition.setLatitude(lastPosition.getLatitude());
+                    syntheticPosition.setLongitude(lastPosition.getLongitude());
+                    syntheticPosition.setAltitude(lastPosition.getAltitude());
+                    syntheticPosition.setSpeed(0);
+                    syntheticPosition.setCourse(lastPosition.getCourse());
+                    syntheticPosition.setAddress(lastPosition.getAddress());
+                    syntheticPosition.setAccuracy(lastPosition.getAccuracy());
+                    syntheticPosition.setNetwork(lastPosition.getNetwork());
+                    syntheticPosition.setAttributes(new HashMap<>(lastPosition.getAttributes()));
+                    syntheticPosition.set(Position.KEY_IGNITION, false);
+                    syntheticPosition.set(Position.KEY_MOTION, false);
+                    syntheticPosition.set(Position.KEY_DISTANCE, 0);
+                    try {
+                        syntheticPosition.setId(storage.addObject(
+                                syntheticPosition, new Request(new Columns.Exclude("id"))));
+                        events.put(new Event(Event.TYPE_IGNITION_OFF, syntheticPosition), syntheticPosition);
+                    } catch (StorageException e) {
+                        LOGGER.warn("Failed to store synthetic ignition-off position", e);
+                    }
+                }
+            }
+
             notificationManager.updateEvents(events);
         }
 
