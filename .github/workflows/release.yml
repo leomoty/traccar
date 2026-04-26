@@ -32,19 +32,7 @@ jobs:
           cache-dependency-path: traccar-web/package-lock.json
       - run: npm ci && npm run build
         working-directory: ./traccar-web
-      - run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y libgcc-s1:i386 libstdc++6:i386
-          sudo apt-get install -y innoextract makeself wine32
-      - run: |
-          JDK_VERSION="21.0.7+6"
-          JDK_BASE="https://github.com/adoptium/temurin21-binaries/releases/download/jdk-${JDK_VERSION}"
-          wget -q "$JDK_BASE/OpenJDK21U-jdk_x64_windows_hotspot_${JDK_VERSION/+/_}.zip"
-          wget -q "$JDK_BASE/OpenJDK21U-jdk_x64_linux_hotspot_${JDK_VERSION/+/_}.tar.gz"
-          wget -q "$JDK_BASE/OpenJDK21U-jdk_aarch64_linux_hotspot_${JDK_VERSION/+/_}.tar.gz"
-          wget -q http://files.jrsoftware.org/is/5/isetup-5.5.6.exe
-          ./package.sh ${{ github.event.inputs.version }}
+      - run: ./package.sh ${{ github.event.inputs.version }} other
         working-directory: ./setup
       - uses: actions/upload-artifact@v4
         with:
@@ -52,21 +40,6 @@ jobs:
           path: setup/traccar-*.zip
           compression-level: 0
           retention-days: 1
-
-  release:
-    name: Create release with installers
-    needs: build
-    if: ${{ github.event.inputs.version != 'preview' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/download-artifact@v4
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ github.event.inputs.version }}
-          files: installers/traccar-*.zip
 
   docker:
     name: Build and push docker images
